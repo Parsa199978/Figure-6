@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Oral Health Measurements Network</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "Inter", Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .chart-container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            width: 95%;
+            max-width: 1700px;
+            position: relative;
+        }
+        .title-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .main-title {
+            font-size: 26px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .sub-title-interactive {
+            font-size: 18px;
+            color: #4a6572;
+            margin-bottom: 15px;
+        }
+        svg {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .node-group {
+            cursor: pointer;
+        }
+        .node-group circle {
+            stroke: #555;
+            stroke-width: 0.5px;
+            transition: fill-opacity 0.3s ease, r 0.3s ease, stroke-width 0.3s ease;
+        }
+        .node-group text {
+            font-size: 10px;
+            fill: #333;
+            pointer-events: none;
+            transition: fill-opacity 0.3s ease, font-weight 0.3s ease;
+        }
+        .actor-node-group text {
+            text-anchor: end;
+        }
+        .measurement-node-group text {
+            text-anchor: start;
+        }
+
+        .measurement-category-label {
+            font-size: 12px;
+            font-weight: bold;
+            fill: #1a5276;
+            text-anchor: start;
+            transition: fill-opacity 0.3s ease, font-weight 0.3s ease;
+        }
+        .link {
+            fill: none;
+            stroke-opacity: 0.5;
+            stroke-width: 1px;
+            transition: stroke-opacity 0.3s ease, stroke-width 0.3s ease;
+            pointer-events: auto;
+        }
+
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px 12px;
+            font-size: 12px;
+            background: #222;
+            color: #fff;
+            border-radius: 6px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+            max-width: 300px;
+            white-space: normal;
+        }
+
+        .link.highlighted {
+            stroke-opacity: 1 !important;
+            stroke-width: 2.5px !important;
+        }
+        .node-group.highlighted circle {
+            stroke-width: 2px !important;
+            fill-opacity: 1 !important;
+        }
+        .node-group.highlighted text,
+        .measurement-category-label.highlighted {
+            font-weight: bold !important;
+            fill-opacity: 1 !important;
+        }
+
+        .node-group.dimmed circle {
+            fill-opacity: 0.1 !important;
+            stroke-opacity: 0.2 !important;
+        }
+        .node-group.dimmed text,
+        .measurement-category-label.dimmed {
+            fill-opacity: 0.2 !important;
+        }
+        .link.dimmed {
+             stroke-opacity: 0.05 !important;
+        }
+
+
+        @media (max-width: 1200px) {
+            .node-group text { font-size: 9.5px; }
+            .measurement-category-label { font-size: 11.5px; }
+            .sub-title-interactive { font-size: 17px; }
+        }
+        @media (max-width: 992px) {
+            .chart-container { width: 98%; padding: 20px; max-width: 100%;}
+            .node-group text { font-size: 9px; }
+            .measurement-category-label { font-size: 11px; }
+            .main-title { font-size: 22px; }
+            .sub-title-interactive { font-size: 16px; }
+        }
+        @media (max-width: 768px) {
+            .node-group text { font-size: 8px; }
+            .measurement-category-label { font-size: 10px; }
+            .main-title { font-size: 20px; }
+            .sub-title-interactive { font-size: 15px; }
+        }
+         @media (max-width: 480px) {
+            .node-group text { font-size: 7.5px; }
+            .measurement-category-label { font-size: 9px; }
+            .main-title { font-size: 18px; }
+            .sub-title-interactive { font-size: 14px; }
+            .chart-container { padding: 15px; }
+            .tooltip { font-size: 10px; padding: 5px 8px; max-width: 200px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <div class="title-header">
+            <div class="main-title">Oral Health Measurements of Cohort Studies</div>
+            <div class="sub-title-interactive">Interactive Bipartite Network</div>
+        </div>
+        <svg id="bipartite-graph"></svg>
+        <div class="tooltip"></div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        // Updated based on "Figure 5 DATA - 17 May.pdf"
+        const dataPairs = [
+            // Self-reported
+            { m: "Self-rated Oral Health", s_str: "#3, #6, #9, #14, #15, #16, #19, #22, #24, #29, #31, #32, #34" },
+            { m: "Dental Appearance", s_str: "#1, #7" },
+            { m: "Parafunctional Habits", s_str: "#7" },
+            { m: "Perceived Need for Dental Treatment", s_str: "#1, #6, #22, #29" },
+            { m: "Orthodontic Treatment History", s_str: "#1, #7, #29" },
+            { m: "Dento-facial Pain", s_str: "#6, #12, #15, #17, #2D" },
+            { m: "Chewing Capacity", s_str: "#6" },
+            { m: "Oral Health-Related Quality of Life (OHRQOL)", s_str: "#3, #6, #7, #25, #34" },
+            { m: "Oral Health Impact Profile (OHIP-14) Scores", s_str: "#6, #7, #29" },
+            { m: "Dental Decay/Dental Filling", s_str: "#10, #11, #30" },
+            { m: "Dental Abscess/Infection/Inflammation", s_str: "#11, #2D" },
+            { m: "Dental Crowding", s_str: "#11" },
+            { m: "Dental Extraction", s_str: "#10, #11" },
+            { m: "Teeth Number/Missing Tooth/Tooth Loss", s_str: "#16, #31" }, // First mention
+            { m: "Dental Trauma", s_str: "#7, #10, #11" },
+            { m: "Gum Bleeding", s_str: "#11" },
+            { m: "Dry Mouth", s_str: "#7, #14" },
+            { m: "Xerostomia Inventory (XI) Score", s_str: "#14" },
+            { m: "Summated Xerostomia Inventory-Dutch Version (SXI-D)", s_str: "#14" },
+            { m: "Third Molar Tooth Emergence", s_str: "#7" },
+            { m: "Use of Partial Denture", s_str: "#14" },
+            { m: "Burning Mouth Syndrome (BMS)", s_str: "#14" }, // 22nd unique self-reported item
+
+            // Clinical Data
+            { m: "Dental Aesthetic Index (DAI)", s_str: "#1, #25, #34" },
+            { m: "Index of Orthodontic Treatment Need (IOTN)", s_str: "#10, #34" },
+            { m: "Type of Orthodontic Treatment", s_str: "#34" },
+            { m: "DMFT(dmft)/DMFS(dmfs)", s_str: "#1, #3, #5, #6, #7, #12, #13, #14, #15, #17, #20, #21, #25, #27, #28, #29, #32, #36, #2D, #4D" },
+            { m: "International Caries Detection and Assessment System (ICDAS) Score", s_str: "#8, #18, #19" },
+            { m: "Treatment Needs Index (TNI)", s_str: "#12" },
+            { m: "Care Index (Crl)", s_str: "#12" },
+            { m: "Tooth Extraction Index (TEI)", s_str: "#12" },
+            { m: "Restored Tooth Surfaces", s_str: "#8, #10" },
+            { m: "Dental Decay Presence (Cavitation/White Spot Lesion)", s_str: "#2, #4, #9, #10, #13, #2D" },
+            { m: "Oral Microbiota", s_str: "#2, #4, #8, #13, #19, #33" },
+            { m: "Salivary Immunoglobulin", s_str: "#2" },
+            { m: "Salivary pH", s_str: "#8" },
+            { m: "Oral Assessment Scale (OAS) Score", s_str: "#33" },
+            { m: "Tooth Abscess", s_str: "#7" },
+            { m: "Tooth Eruption Age", s_str: "#2, #4, #13, #26, #35" },
+            { m: "Tooth Exfoliation Age", s_str: "#4" },
+            { m: "Community Periodontal Index (CPI)", s_str: "#2" },
+            { m: "Plaque Presence", s_str: "#2, #3, #9, #13" },
+            { m: "Calculus Presence", s_str: "#3" },
+            { m: "Oral Hygiene Index (OHI)", s_str: "#7, #10, #29" },
+            { m: "Gingival Bleeding/Bleeding on Probing", s_str: "#7" },
+            { m: "Probing Depth (PD)", s_str: "#3, #6, #7, #14, #29" },
+            { m: "Gingival Recession (GR)", s_str: "#3, #6, #7, #14, #29" },
+            { m: "Clinical Attachment Loss (CAL)", s_str: "#3, #6, #14, #29" },
+            { m: "Gingival Index (GI)", s_str: "#6, #10" },
+            { m: "Periodontal Disease Presence/Classification", s_str: "#3, #6, #7, #14" },
+            { m: "Oral Mucosal Lesions Presence", s_str: "#3" },
+            { m: "Teeth Number/Missing Tooth/Tooth Loss", s_str: "#4, #6, #10, #14, #29" }, // Second mention, links will be added
+            { m: "Tooth and Arch Morphology (Dental Cast)", s_str: "#4" },
+            { m: "Facial Measurements (Photography)", s_str: "#4" },
+            { m: "Occlusal Relations", s_str: "#4, #7, #10" },
+            { m: "Dental Erosion", s_str: "#4" },
+            { m: "Enamel Hypoplasia", s_str: "#4, #18" },
+            { m: "Linear Enamel Hypoplasia (Dental Cast)", s_str: "#35" },
+            { m: "Developmental Defects of Enamel (DDE) Index", s_str: "#4, #7, #13, #18, #29" },
+            { m: "Thylstrup and Fejerskov Index (Dental Fluorosis)", s_str: "#17, #25" },
+            { m: "Functional tooth units (FTUs)", s_str: "#6" },
+            { m: "Salivary Flow Rate", s_str: "#6, #14" },
+            { m: "Oral Abnormalities", s_str: "#13" },
+            { m: "Oral HPV", s_str: "#24" },
+            { m: "Dental Hospitalisation Diagnosis", s_str: "#1D, #5D, #6D, #8D" },
+            { m: "Hospital Dental Treatment", s_str: "#1D, #5D, #8D" },
+            { m: "Amalgam Treatment History", s_str: "#3D" },
+            { m: "Referral for General Anaesthesia/Sedation", s_str: "#2D" },
+            { m: "Oral Squamous Cell Carcinoma Diagnosis/Stage", s_str: "#7D, #9D, #10D" },
+            { m: "Oral Lichen Planus and Lichenoid Lesions (OLP/OLL) Diagnosis/Characteristics", s_str: "#10D" },
+            { m: "Oral Epithelial Dysplasia Diagnosis", s_str: "#10D" }
+        ];
+
+        const linksData = [];
+        const studyDegrees = {};
+        const measurementDegrees = {};
+        const measurementDetails = [];
+        const seenMeasurements = new Set();
+        let selfReportedCount = 0;
+        const MAX_SELF_REPORTED = 22;
+        let originalIndexCounter = 0;
+
+        dataPairs.forEach(pair => {
+            const measurementName = pair.m.replace(/\n+/g, ' ').trim();
+            if (!seenMeasurements.has(measurementName)) {
+                seenMeasurements.add(measurementName);
+                let category = (selfReportedCount < MAX_SELF_REPORTED) ? "Self-reported" : "Clinical Data";
+                if (category === "Self-reported") selfReportedCount++;
+                measurementDetails.push({
+                    id: measurementName, name: measurementName, category: category,
+                    originalIndex: originalIndexCounter++, degree: 0
+                });
+                measurementDegrees[measurementName] = 0;
+            }
+            const studyNumbers = pair.s_str.replace(/\n+/g, ' ').split(/[\s,]+/)
+                .map(s => s.trim()).filter(s => s)
+                .filter(s => s.startsWith("#") || !isNaN(s.replace('D','')))
+                .map(s => s.startsWith("#") ? s : `#${s}`)
+                .filter(s => s.length > 1 || (s.length > 2 && s.endsWith('D')) );
+            studyNumbers.forEach(studyId => {
+                if (!studyDegrees[studyId]) studyDegrees[studyId] = 0;
+                studyDegrees[studyId]++;
+                measurementDegrees[measurementName]++;
+                linksData.push({ source: studyId, target: measurementName });
+            });
+        });
+
+        const studiesData = Object.keys(studyDegrees)
+            .map(s_id => ({ id: s_id, name: s_id, degree: studyDegrees[s_id] }))
+            .sort((a, b) => {
+                const isAD = a.name.endsWith('D');
+                const isBD = b.name.endsWith('D');
+                const numA = parseInt(a.name.substring(1).replace('D', ''));
+                const numB = parseInt(b.name.substring(1).replace('D', ''));
+                if (!isAD && isBD) return -1;
+                if (isAD && !isBD) return 1;
+                return numA - numB;
+            });
+        measurementDetails.forEach(m => { m.degree = measurementDegrees[m.id] || 0; });
+        const measurementsData = measurementDetails.sort((a, b) => {
+            if (a.category < b.category) return -1;
+            if (a.category > b.category) return 1;
+            return a.originalIndex - b.originalIndex;
+        });
+
+        const allDegrees = [...studiesData.map(d => d.degree), ...measurementsData.map(d => d.degree)];
+        const maxDegree = d3.max(allDegrees) || 1;
+        const radiusScale = d3.scaleSqrt().domain([1, maxDegree]).range([4, 18]);
+
+        const svg = d3.select("#bipartite-graph");
+        const container = document.querySelector('.chart-container');
+        const tooltip = d3.select(".tooltip");
+        let studyNodeGroups, measurementNodeGroups, linkPaths, allCategoryLabels;
+
+        function drawGraph() {
+            svg.selectAll("*").remove();
+            const width = container.clientWidth;
+            const nodeVerticalPadding = 6;
+            const itemFontSize = 10;
+            const maxCircleDiameter = 2 * radiusScale.range()[1];
+            const itemHeight = Math.max(itemFontSize + (nodeVerticalPadding * 2), maxCircleDiameter + nodeVerticalPadding);
+            const categoryLabelFontSize = 12;
+            const categoryLabelHeight = categoryLabelFontSize + 8;
+            const categorySpacing = 20;
+
+            let totalMeasurementColumnHeight = 0;
+            const categories = ["Self-reported", "Clinical Data"];
+            categories.forEach(cat => {
+                const itemsInCategory = measurementsData.filter(m => m.category === cat).length;
+                if (itemsInCategory > 0) {
+                    totalMeasurementColumnHeight += categoryLabelHeight + (itemsInCategory * itemHeight) + categorySpacing;
+                }
+            });
+            totalMeasurementColumnHeight = Math.max(0, totalMeasurementColumnHeight - categorySpacing);
+            const studiesColumnHeight = studiesData.length * itemHeight;
+            const chartContentHeight = Math.max(studiesColumnHeight, totalMeasurementColumnHeight);
+            const height = chartContentHeight + 100;
+            svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+            const baseLeftMargin = Math.min(150, width * 0.15);
+            const baseRightMargin = Math.min(550, width * 0.50);
+            const margin = { top: 50, right: baseRightMargin, bottom: 50, left: baseLeftMargin };
+            const chartWidth = width - margin.left - margin.right;
+            const chartHeight = height - margin.top - margin.bottom;
+
+            if (chartWidth <=0) { console.warn("Chart width not positive."); return; }
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const studyYScale = d3.scalePoint()
+                .domain(studiesData.map(d => d.id))
+                .range([itemHeight / 2, chartHeight - itemHeight / 2])
+                .padding(0.5);
+            const colorScale = d3.scaleOrdinal(d3.schemeTableau10).domain(studiesData.map(d => d.id));
+
+            studyNodeGroups = g.append("g")
+                .attr("class", "study-nodes-container")
+                .selectAll("g.actor-node-group")
+                .data(studiesData)
+                .join("g")
+                .attr("class", "node-group actor-node-group")
+                .attr("transform", d => `translate(0, ${studyYScale(d.id)})`)
+                .on("mouseover", (event, d_node) => handleNodeMouseOver(event, d_node, true))
+                .on("mouseout", handleNodeMouseOut);
+            studyNodeGroups.append("circle").attr("r", d => radiusScale(d.degree || 1)).style("fill", d => colorScale(d.id));
+            studyNodeGroups.append("text").attr("x", d => -radiusScale(d.degree || 1) - 7).attr("dy", "0.35em").text(d => d.name);
+
+            const measurementGroupsG = g.append("g")
+                .attr("class", "measurement-nodes-container")
+                .attr("transform", `translate(${chartWidth}, 0)`);
+            let currentY = itemHeight / 2;
+            const measurementNodeYPositions = {};
+
+            categories.forEach(categoryName => {
+                const itemsInCategory = measurementsData.filter(m => m.category === categoryName);
+                if (itemsInCategory.length > 0) {
+                    measurementGroupsG.append("text")
+                        .attr("class", "measurement-category-label")
+                        .attr("x", 10)
+                        .attr("y", currentY - itemHeight/2 + categoryLabelHeight/2 - categorySpacing/2 )
+                        .attr("dy", "0.35em")
+                        .text(categoryName);
+                    currentY += categoryLabelHeight;
+                    itemsInCategory.forEach(item => {
+                        const itemYCenter = currentY;
+                        const nodeGroup = measurementGroupsG.append("g")
+                            .datum(item)
+                            .attr("class", "node-group measurement-node-group")
+                            .attr("transform", `translate(0, ${itemYCenter})`)
+                            .on("mouseover", (event, d_node) => handleNodeMouseOver(event, d_node, false))
+                            .on("mouseout", handleNodeMouseOut);
+                        nodeGroup.append("circle").attr("r", d => radiusScale(d.degree || 1)).style("fill", "#e0e0e0");
+                        nodeGroup.append("text").attr("x", d => radiusScale(d.degree || 1) + 7).attr("dy", "0.35em").text(d => d.name);
+                        measurementNodeYPositions[item.id] = itemYCenter;
+                        currentY += itemHeight;
+                    });
+                    currentY += categorySpacing;
+                }
+            });
+            measurementNodeGroups = measurementGroupsG.selectAll(".measurement-node-group");
+            allCategoryLabels = measurementGroupsG.selectAll(".measurement-category-label");
+
+            linkPaths = g.append("g")
+                .attr("class", "links")
+                .selectAll("path")
+                .data(linksData)
+                .join("path")
+                .attr("class", "link")
+                .attr("d", d => {
+                    const sourceY = studyYScale(d.source);
+                    const targetY = measurementNodeYPositions[d.target];
+                    if (isNaN(sourceY) || targetY === undefined || isNaN(targetY)) return null;
+                    return d3.linkHorizontal()({ source: [0, sourceY], target: [chartWidth, targetY] });
+                })
+                .style("stroke", d => colorScale(d.source))
+                .on("mouseover", handleLinkMouseOver)
+                .on("mouseout", handleLinkMouseOut);
+        }
+
+        function handleLinkMouseOver(event, d_link) {
+            d3.select(this).classed("highlighted", true).raise();
+            linkPaths.filter(ld => ld !== d_link).classed("dimmed", true);
+            studyNodeGroups
+                .classed("dimmed", sg_d => sg_d.id !== d_link.source)
+                .filter(sg_d => sg_d.id === d_link.source)
+                .classed("highlighted", true);
+            measurementNodeGroups
+                .classed("dimmed", mg_d => mg_d.id !== d_link.target)
+                .filter(mg_d => mg_d.id === d_link.target)
+                .classed("highlighted", true);
+            allCategoryLabels.classed("dimmed", true);
+            const targetMeasurement = measurementsData.find(m => m.id === d_link.target);
+            if (targetMeasurement) {
+                allCategoryLabels
+                    .filter(function() { return d3.select(this).text() === targetMeasurement.category; })
+                    .classed("dimmed", false)
+                    .classed("highlighted", true);
+            }
+            tooltip.style("opacity", 0.9)
+                   .html(`<b>Study:</b> ${d_link.source}<br><b>Measurement:</b> ${d_link.target}`)
+                   .style("left", (event.pageX - container.getBoundingClientRect().left + 15) + "px")
+                   .style("top", (event.pageY - container.getBoundingClientRect().top - 30) + "px")
+                   .style("transform", "translateY(-100%)");
+        }
+
+        function handleLinkMouseOut() {
+            resetHighlights();
+        }
+
+        function handleNodeMouseOver(event, d_node, isStudyNode) {
+            const hoveredNodeId = d_node.id;
+            d3.select(event.currentTarget).classed("highlighted", true).raise();
+            const connectedLinks = linksData.filter(l =>
+                isStudyNode ? l.source === hoveredNodeId : l.target === hoveredNodeId
+            );
+            const partnerNodeIds = new Set();
+            connectedLinks.forEach(l => {
+                if (isStudyNode) partnerNodeIds.add(l.target);
+                else partnerNodeIds.add(l.source);
+            });
+            linkPaths
+                .classed("highlighted", l => connectedLinks.includes(l))
+                .classed("dimmed", l => !connectedLinks.includes(l))
+                .filter(l => connectedLinks.includes(l)).raise();
+            studyNodeGroups
+                .classed("highlighted", s_d => s_d.id === hoveredNodeId || (isStudyNode ? false : partnerNodeIds.has(s_d.id)))
+                .classed("dimmed", s_d => s_d.id !== hoveredNodeId && (isStudyNode ? true : !partnerNodeIds.has(s_d.id)));
+            measurementNodeGroups
+                .classed("highlighted", m_d => m_d.id === hoveredNodeId || (isStudyNode ? partnerNodeIds.has(m_d.id) : false))
+                .classed("dimmed", m_d => m_d.id !== hoveredNodeId && (isStudyNode ? !partnerNodeIds.has(m_d.id) : true));
+            allCategoryLabels.classed("dimmed", true);
+            if (isStudyNode) {
+                 measurementsData.forEach(m => {
+                    if (partnerNodeIds.has(m.id)) {
+                         allCategoryLabels
+                            .filter(function() { return d3.select(this).text() === m.category; })
+                            .classed("dimmed", false)
+                            .classed("highlighted", true);
+                    }
+                 });
+            } else {
+                const targetMeasurement = measurementsData.find(m => m.id === hoveredNodeId);
+                if (targetMeasurement) {
+                    allCategoryLabels
+                        .filter(function() { return d3.select(this).text() === targetMeasurement.category; })
+                        .classed("dimmed", false)
+                        .classed("highlighted", true);
+                }
+            }
+            tooltip.style("opacity", 0.9)
+                   .html(`<b>${isStudyNode ? "Study" : "Measurement"}:</b> ${d_node.name}<br>Connections: ${d_node.degree}`)
+                   .style("left", (event.pageX - container.getBoundingClientRect().left + 15) + "px")
+                   .style("top", (event.pageY - container.getBoundingClientRect().top - 30) + "px")
+                   .style("transform", "translateY(-100%)");
+        }
+
+        function handleNodeMouseOut() {
+            resetHighlights();
+        }
+
+        function resetHighlights() {
+            linkPaths.classed("highlighted", false).classed("dimmed", false);
+            studyNodeGroups.classed("highlighted", false).classed("dimmed", false);
+            measurementNodeGroups.classed("highlighted", false).classed("dimmed", false);
+            allCategoryLabels.classed("dimmed", false).classed("highlighted", false);
+            tooltip.style("opacity", 0);
+        }
+
+        drawGraph();
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(drawGraph, 100);
+        });
+    </script>
+</body>
+</html>
