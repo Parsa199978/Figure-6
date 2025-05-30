@@ -165,17 +165,17 @@
 
     <script>
         // --- DATA ---
-        // Updated based on "Figure 5 DATA - 30 May.docx"
+        // Updated based on "Figure 5 DATA - 17 May.pdf"
         const dataPairs = [
             // Self-reported
-            { m: "Self-rated Oral Health", s_str: "#6, #9, #14, #15, #16, #19, #22, #24, #29, #31, #32, #34" }, // Study #3 removed, #22 added
+            { m: "Self-rated Oral Health", s_str: "#3, #6, #9, #14, #15, #16, #19, #22, #24, #29, #31, #32, #34" },
             { m: "Dental Appearance", s_str: "#1, #7" },
             { m: "Parafunctional Habits", s_str: "#7" },
-            { m: "Perceived Need for Dental Treatment", s_str: "#1, #6, #22, #29" }, // Study #22 added
+            { m: "Perceived Need for Dental Treatment", s_str: "#1, #6, #22, #29" },
             { m: "Orthodontic Treatment History", s_str: "#1, #7, #29" },
             { m: "Dento-facial Pain", s_str: "#6, #12, #15, #17, #2D" },
             { m: "Chewing Capacity", s_str: "#6" },
-            { m: "Oral Health-Related Quality of Life (OHRQoL)", s_str: "#3, #6, #7, #25, #29, #34" }, // Study #29 added
+            { m: "Oral Health-Related Quality of Life (OHRQOL)", s_str: "#3, #6, #7, #25, #34" },
             { m: "Oral Health Impact Profile (OHIP-14) Scores", s_str: "#6, #7, #29" },
             { m: "Dental Decay/Dental Filling", s_str: "#10, #11, #30" },
             { m: "Dental Abscess/Infection/Inflammation", s_str: "#11, #2D" },
@@ -186,7 +186,7 @@
             { m: "Gum Bleeding", s_str: "#11" },
             { m: "Dry Mouth", s_str: "#7, #14" },
             { m: "Xerostomia Inventory (XI) Score", s_str: "#14" },
-            { m: "Summated Xerostomia Inventory–Dutch Version (SXI-D)", s_str: "#14" }, // en-dash
+            { m: "Summated Xerostomia Inventory-Dutch Version (SXI-D)", s_str: "#14" },
             { m: "Third Molar Tooth Emergence", s_str: "#7" },
             { m: "Use of Partial Denture", s_str: "#14" },
             { m: "Burning Mouth Syndrome (BMS)", s_str: "#14" }, // 22nd unique self-reported item
@@ -194,17 +194,17 @@
             // Clinical Data
             { m: "Dental Aesthetic Index (DAI)", s_str: "#1, #25, #34" },
             { m: "Index of Orthodontic Treatment Need (IOTN)", s_str: "#10, #34" },
-            { m: "Type of Orthodontic Treatment", s_str: "#34" }, // Removed trailing comma from name
+            { m: "Type of Orthodontic Treatment", s_str: "#34" },
             { m: "DMFT(dmft)/DMFS(dmfs)", s_str: "#1, #3, #5, #6, #7, #12, #13, #14, #15, #17, #20, #21, #25, #27, #28, #29, #32, #36, #2D, #4D" },
             { m: "International Caries Detection and Assessment System (ICDAS) Score", s_str: "#8, #18, #19" },
             { m: "Treatment Needs Index (TNI)", s_str: "#12" },
-            { m: "Care Index (CrI)", s_str: "#12" }, // CrI
+            { m: "Care Index (Crl)", s_str: "#12" },
             { m: "Tooth Extraction Index (TEI)", s_str: "#12" },
             { m: "Restored Tooth Surfaces", s_str: "#8, #10" },
             { m: "Dental Decay Presence (Cavitation/White Spot Lesion)", s_str: "#2, #4, #9, #10, #13, #2D" },
             { m: "Oral Microbiota", s_str: "#2, #4, #8, #13, #19, #33" },
-            { m: "Salivary Immunoglobulin", s_str: "#2" }, // New item
-            { m: "Salivary pH", s_str: "#8" }, // New item
+            { m: "Salivary Immunoglobulin", s_str: "#2" },
+            { m: "Salivary pH", s_str: "#8" },
             { m: "Oral Assessment Scale (OAS) Score", s_str: "#33" },
             { m: "Tooth Abscess", s_str: "#7" },
             { m: "Tooth Eruption Age", s_str: "#2, #4, #13, #26, #35" },
@@ -220,7 +220,7 @@
             { m: "Gingival Index (GI)", s_str: "#6, #10" },
             { m: "Periodontal Disease Presence/Classification", s_str: "#3, #6, #7, #14" },
             { m: "Oral Mucosal Lesions Presence", s_str: "#3" },
-            { m: "Teeth Number/Missing Tooth/Tooth Loss", s_str: "#4, #6, #10, #14, #29" }, // Second mention
+            { m: "Teeth Number/Missing Tooth/Tooth Loss", s_str: "#4, #6, #10, #14, #29" }, // Second mention, links will be added
             { m: "Tooth and Arch Morphology (Dental Cast)", s_str: "#4" },
             { m: "Facial Measurements (Photography)", s_str: "#4" },
             { m: "Occlusal Relations", s_str: "#4, #7, #10" },
@@ -238,7 +238,7 @@
             { m: "Amalgam Treatment History", s_str: "#3D" },
             { m: "Referral for General Anaesthesia/Sedation", s_str: "#2D" },
             { m: "Oral Squamous Cell Carcinoma Diagnosis/Stage", s_str: "#7D, #9D, #10D" },
-            { m: "Oral Lichen Planus and Lichenoid Lesions (OLP/OLL) Diagnosis/Characteristics", s_str: "#10D" }, // Single space before (OLP/OLL)
+            { m: "Oral Lichen Planus and Lichenoid Lesions (OLP/OLL) Diagnosis/Characteristics", s_str: "#10D" },
             { m: "Oral Epithelial Dysplasia Diagnosis", s_str: "#10D" }
         ];
 
