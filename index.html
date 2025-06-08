@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Oral Health Measurements Network</title>
+    <title>Bipartite Network with Oral Health Data</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -86,16 +86,17 @@
             text-align: center;
             padding: 8px 12px;
             font-size: 12px;
-            background: #222;
+            background: rgba(34, 34, 34, 0.9); /* #222 with slight transparency */
             color: #fff;
             border-radius: 6px;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+            transition: opacity 0.2s ease-in-out; /* Only transition opacity for smooth appearance */
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 10;
             max-width: 300px;
             white-space: normal;
+            /* Transform will be set dynamically by JavaScript */
         }
 
         .link.highlighted {
@@ -165,9 +166,8 @@
 
     <script>
         // --- DATA ---
-        // Updated based on "Figure 5 DATA - 30 May - 0543.docx"
         const dataPairs = [
-            // Self-reported
+             // Self-reported
             { m: "Self-rated Oral Health", s_str: "#6, #9, #14, #15, #16, #19, #22, #24, #29, #31, #32" },
             { m: "Dental Appearance", s_str: "#1, #3, #7" },
             { m: "Parafunctional Habits", s_str: "#7" },
@@ -177,10 +177,10 @@
             { m: "Chewing Capacity", s_str: "#6" },
             { m: "Child Perception Questionnaire (CPQ) / Parental Perception Questionnaire (PPQ)", s_str: "#25, #34" },
             { m: "Oral Health Impact Profile (OHIP-14) Scores", s_str: "#6, #7, #29" },
-            { m: "Dental Caries/Dental Filling", s_str: "#10, #11, #30" }, // Changed "Decay" to "Caries"
+            { m: "Dental Caries/Dental Filling", s_str: "#10, #11, #30" },
             { m: "Dental Abscess/Infection/Inflammation", s_str: "#11, #2D" },
             { m: "Dental Crowding", s_str: "#11" },
-            { m: "Teeth Number/Missing Tooth/Tooth Loss", s_str: "#3, #10, #11, #16, #31" }, // Combined entries
+            { m: "Teeth Number/Missing Tooth/Tooth Loss", s_str: "#3, #10, #11, #16, #31" },
             { m: "Dental Trauma", s_str: "#7, #10, #11" },
             { m: "Gum Bleeding", s_str: "#11" },
             { m: "Dry Mouth", s_str: "#7, #14" },
@@ -188,10 +188,8 @@
             { m: "Summated Xerostomia Inventory–Dutch Version (SXI-D)", s_str: "#14" },
             { m: "Third Molar Tooth Emergence", s_str: "#7" },
             { m: "Use of Partial Denture", s_str: "#14" },
-            { m: "Burning Mouth Syndrome (BMS)", s_str: "#14" }, // This should be the 21st unique self-reported if OHRQoL was replaced
-
+            { m: "Burning Mouth Syndrome (BMS)", s_str: "#14" },
             // Clinical Data
-            // Note: The 22-item rule for 'Self-reported' will be based on the order of *unique* items as processed.
             { m: "Dental Aesthetic Index (DAI)", s_str: "#1, #25, #34" },
             { m: "Index of Orthodontic Treatment Need (IOTN)", s_str: "#10, #34" },
             { m: "Type of Orthodontic Treatment", s_str: "#34" },
@@ -201,7 +199,7 @@
             { m: "Care Index (CrI)", s_str: "#12" },
             { m: "Tooth Extraction Index (TEI)", s_str: "#12" },
             { m: "Restored Tooth Surfaces", s_str: "#8, #10" },
-            { m: "Dental Caries Presence (Cavitation/White Spot Lesion)", s_str: "#2, #4, #9, #10, #13, #2D" }, // Changed "Decay" to "Caries"
+            { m: "Dental Caries Presence (Cavitation/White Spot Lesion)", s_str: "#2, #4, #9, #10, #13, #2D" },
             { m: "Oral Microbiota", s_str: "#2, #4, #8, #13, #19, #33" },
             { m: "Salivary Immunoglobulin", s_str: "#2" },
             { m: "Salivary pH", s_str: "#8" },
@@ -220,9 +218,6 @@
             { m: "Gingival Index (GI)", s_str: "#6, #10" },
             { m: "Periodontal Disease Presence/Classification", s_str: "#3, #6, #7, #14" },
             { m: "Oral Mucosal Lesions Presence", s_str: "#3" },
-            // Note: "Teeth Number/Missing Tooth/Tooth Loss" has a second entry in the docx: "#4, #6, #10, #14, #29"
-            // The processing logic will merge these into one measurement node.
-            { m: "Teeth Number/Missing Tooth/Tooth Loss", s_str: "#4, #6, #10, #14, #29" },
             { m: "Tooth and Arch Morphology (Dental Cast)", s_str: "#4" },
             { m: "Facial Measurements (Photography)", s_str: "#4" },
             { m: "Occlusal Relations", s_str: "#4, #7, #10" },
@@ -240,47 +235,64 @@
             { m: "Amalgam Treatment History", s_str: "#3D" },
             { m: "Referral for General Anaesthesia/Sedation", s_str: "#2D" },
             { m: "Oral Squamous Cell Carcinoma Diagnosis/Stage", s_str: "#7D, #9D, #10D" },
-            { m: "Oral Lichen Planus and Lichenoid Lesions (OLP/OLL) Diagnosis/Characteristics", s_str: "#10D" },
+            { m: "Oral Lichen Planus and Lichenoid Lesions  (OLP/OLL) Diagnosis/Characteristics", s_str: "#10D" },
             { m: "Oral Epithelial Dysplasia Diagnosis", s_str: "#10D" }
         ];
 
-        const linksData = [];
-        const studyDegrees = {};
-        const measurementDegrees = {};
-        const measurementDetails = [];
-        const seenMeasurements = new Set();
-        let selfReportedCount = 0;
-        const MAX_SELF_REPORTED = 22;
+        // --- DATA PROCESSING LOGIC ---
+
+        // 1. Consolidate data to handle duplicate measurement entries
+        const consolidatedMeasurements = {};
+        const MAX_ITEMS_IN_FIRST_CATEGORY = 21; // Set to the number of unique self-reported items
+        let firstCategoryCount = 0;
         let originalIndexCounter = 0;
 
         dataPairs.forEach(pair => {
             const measurementName = pair.m.replace(/\n+/g, ' ').trim();
-            if (!seenMeasurements.has(measurementName)) {
-                seenMeasurements.add(measurementName);
-                let category = (selfReportedCount < MAX_SELF_REPORTED) ? "Self-reported" : "Clinical Data";
-                // Only increment selfReportedCount if it's a new unique item AND it's being categorized as self-reported
+            
+            if (!consolidatedMeasurements[measurementName]) {
+                let category = (firstCategoryCount < MAX_ITEMS_IN_FIRST_CATEGORY) ? "Self-reported" : "Clinical Data";
                 if (category === "Self-reported") {
-                    selfReportedCount++;
+                    firstCategoryCount++;
                 }
-                measurementDetails.push({
-                    id: measurementName, name: measurementName, category: category,
-                    originalIndex: originalIndexCounter++, degree: 0
-                });
-                measurementDegrees[measurementName] = 0;
+                consolidatedMeasurements[measurementName] = {
+                    id: measurementName,
+                    name: measurementName,
+                    studies: new Set(),
+                    category: category,
+                    originalIndex: originalIndexCounter++
+                };
             }
+
             const studyNumbers = pair.s_str.replace(/\n+/g, ' ').split(/[\s,]+/)
                 .map(s => s.trim()).filter(s => s)
-                .filter(s => s.startsWith("#") || !isNaN(s.replace('D','')))
                 .map(s => s.startsWith("#") ? s : `#${s}`)
                 .filter(s => s.length > 1 || (s.length > 2 && s.endsWith('D')) );
+
             studyNumbers.forEach(studyId => {
-                if (!studyDegrees[studyId]) studyDegrees[studyId] = 0;
-                studyDegrees[studyId]++;
-                measurementDegrees[measurementName]++; // This should correctly sum degrees for merged items
-                linksData.push({ source: studyId, target: measurementName });
+                consolidatedMeasurements[measurementName].studies.add(studyId);
             });
         });
 
+        // 2. Create the final nodes and links from the consolidated data
+        const linksData = [];
+        const studyDegrees = {};
+        let measurementsData = [];
+
+        for (const measurementName in consolidatedMeasurements) {
+            const measurementNode = consolidatedMeasurements[measurementName];
+            const studySet = measurementNode.studies;
+            
+            measurementNode.degree = studySet.size;
+            measurementsData.push(measurementNode);
+
+            studySet.forEach(studyId => {
+                linksData.push({ source: studyId, target: measurementName });
+                studyDegrees[studyId] = (studyDegrees[studyId] || 0) + 1;
+            });
+        }
+        
+        // 3. Create and sort study and measurement nodes
         const studiesData = Object.keys(studyDegrees)
             .map(s_id => ({ id: s_id, name: s_id, degree: studyDegrees[s_id] }))
             .sort((a, b) => {
@@ -292,21 +304,18 @@
                 if (isAD && !isBD) return 1;
                 return numA - numB;
             });
-
-        // Update degrees in measurementDetails from the aggregated measurementDegrees map
-        measurementDetails.forEach(m => {
-            m.degree = measurementDegrees[m.id] || 0;
-        });
-
-        const measurementsData = measurementDetails.sort((a, b) => {
+        
+        measurementsData = measurementsData.sort((a, b) => {
             if (a.category < b.category) return -1;
             if (a.category > b.category) return 1;
             return a.originalIndex - b.originalIndex;
         });
 
+        // --- D3.js DRAWING LOGIC ---
+
         const allDegrees = [...studiesData.map(d => d.degree), ...measurementsData.map(d => d.degree)];
         const maxDegree = d3.max(allDegrees) || 1;
-        const radiusScale = d3.scaleSqrt().domain([1, maxDegree]).range([4, 18]);
+        const radiusScale = d3.scaleSqrt().domain([0, maxDegree]).range([4, 18]);
 
         const svg = d3.select("#bipartite-graph");
         const container = document.querySelector('.chart-container');
@@ -326,6 +335,7 @@
 
             let totalMeasurementColumnHeight = 0;
             const categories = ["Self-reported", "Clinical Data"];
+
             categories.forEach(cat => {
                 const itemsInCategory = measurementsData.filter(m => m.category === cat).length;
                 if (itemsInCategory > 0) {
@@ -334,22 +344,21 @@
             });
             totalMeasurementColumnHeight = Math.max(0, totalMeasurementColumnHeight - categorySpacing);
             const studiesColumnHeight = studiesData.length * itemHeight;
-            const chartContentHeight = Math.max(studiesColumnHeight, totalMeasurementColumnHeight);
+            const chartContentHeight = Math.max(studiesColumnHeight, totalMeasurementColumnHeight, 50); // Ensure minimum height
             const height = chartContentHeight + 100;
             svg.attr("viewBox", `0 0 ${width} ${height}`);
 
-            const baseLeftMargin = Math.min(150, width * 0.15);
-            const baseRightMargin = Math.min(550, width * 0.50);
+            const baseLeftMargin = Math.min(150, width * 0.2);
+            const baseRightMargin = Math.min(550, width * 0.5);
             const margin = { top: 50, right: baseRightMargin, bottom: 50, left: baseLeftMargin };
             const chartWidth = width - margin.left - margin.right;
-            const chartHeight = height - margin.top - margin.bottom;
-
+            
             if (chartWidth <=0) { console.warn("Chart width not positive."); return; }
             const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
             const studyYScale = d3.scalePoint()
                 .domain(studiesData.map(d => d.id))
-                .range([itemHeight / 2, chartHeight - itemHeight / 2])
+                .range([itemHeight / 2, chartContentHeight - itemHeight / 2])
                 .padding(0.5);
             const colorScale = d3.scaleOrdinal(d3.schemeTableau10).domain(studiesData.map(d => d.id));
 
@@ -362,8 +371,8 @@
                 .attr("transform", d => `translate(0, ${studyYScale(d.id)})`)
                 .on("mouseover", (event, d_node) => handleNodeMouseOver(event, d_node, true))
                 .on("mouseout", handleNodeMouseOut);
-            studyNodeGroups.append("circle").attr("r", d => radiusScale(d.degree || 1)).style("fill", d => colorScale(d.id));
-            studyNodeGroups.append("text").attr("x", d => -radiusScale(d.degree || 1) - 7).attr("dy", "0.35em").text(d => d.name);
+            studyNodeGroups.append("circle").attr("r", d => radiusScale(d.degree || 0)).style("fill", d => colorScale(d.id));
+            studyNodeGroups.append("text").attr("x", d => -radiusScale(d.degree || 0) - 7).attr("dy", "0.35em").text(d => d.name);
 
             const measurementGroupsG = g.append("g")
                 .attr("class", "measurement-nodes-container")
@@ -389,8 +398,8 @@
                             .attr("transform", `translate(0, ${itemYCenter})`)
                             .on("mouseover", (event, d_node) => handleNodeMouseOver(event, d_node, false))
                             .on("mouseout", handleNodeMouseOut);
-                        nodeGroup.append("circle").attr("r", d => radiusScale(d.degree || 1)).style("fill", "#e0e0e0");
-                        nodeGroup.append("text").attr("x", d => radiusScale(d.degree || 1) + 7).attr("dy", "0.35em").text(d => d.name);
+                        nodeGroup.append("circle").attr("r", d => radiusScale(d.degree || 0)).style("fill", "#e0e0e0");
+                        nodeGroup.append("text").attr("x", d => radiusScale(d.degree || 0) + 7).attr("dy", "0.35em").text(d => d.name);
                         measurementNodeYPositions[item.id] = itemYCenter;
                         currentY += itemHeight;
                     });
@@ -409,7 +418,7 @@
                 .attr("d", d => {
                     const sourceY = studyYScale(d.source);
                     const targetY = measurementNodeYPositions[d.target];
-                    if (isNaN(sourceY) || targetY === undefined || isNaN(targetY)) return null;
+                    if (sourceY === undefined || targetY === undefined) return null;
                     return d3.linkHorizontal()({ source: [0, sourceY], target: [chartWidth, targetY] });
                 })
                 .style("stroke", d => colorScale(d.source))
@@ -448,6 +457,7 @@
         }
 
         function handleNodeMouseOver(event, d_node, isStudyNode) {
+            // --- HIGHLIGHTING LOGIC ---
             const hoveredNodeId = d_node.id;
             d3.select(event.currentTarget).classed("highlighted", true).raise();
             const connectedLinks = linksData.filter(l =>
@@ -487,11 +497,20 @@
                         .classed("highlighted", true);
                 }
             }
+            
+            // --- TOOLTIP POSITIONING LOGIC ---
+            const circle = event.currentTarget.querySelector('circle');
+            const circleRect = circle.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+
+            const tooltipLeft = circleRect.left - containerRect.left + circleRect.width / 2;
+            const tooltipTop = circleRect.bottom - containerRect.top + 8; // 8px gap from circle bottom
+
             tooltip.style("opacity", 0.9)
                    .html(`<b>${isStudyNode ? "Study" : "Measurement"}:</b> ${d_node.name}<br>Connections: ${d_node.degree}`)
-                   .style("left", (event.pageX - container.getBoundingClientRect().left + 15) + "px")
-                   .style("top", (event.pageY - container.getBoundingClientRect().top - 30) + "px")
-                   .style("transform", "translateY(-100%)");
+                   .style("left", `${tooltipLeft}px`)
+                   .style("top", `${tooltipTop}px`)
+                   .style("transform", "translateX(-50%)"); // Center horizontally below the circle
         }
 
         function handleNodeMouseOut() {
